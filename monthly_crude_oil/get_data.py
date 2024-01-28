@@ -9,7 +9,8 @@ from PDF_Parsers.pdfplumber import parse_pdf_for_table
 
 
 """
-Create a CSV file `data.csv` with all of the combined data from the RRC Oil and Gas webpage.
+Return a DataFrame with all of the combined data from the RRC Monthly Crude Oil data page.
+Save a CSV file `data.csv` with all of the combined data from the RRC Monthly Crude Oil data page.
 
 To do so:
   - Extract the list of URLs from the RRC webpage
