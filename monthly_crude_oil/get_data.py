@@ -20,16 +20,30 @@ To do so:
 """
 
 
-def _get_data_source_urls(url):
+def _get_data_source_urls(urls_path, save_data=True):
   try:
+    url = 'https://www.rrc.texas.gov/oil-and-gas/research-and-statistics/production-data/monthly-crude-oil-production-by-district-and-field/'
     response = requests.get(url)
     response.raise_for_status()  # Raise an HTTPError for bad responses
     soup = BeautifulSoup(response.text, 'html.parser')
-    links = [a['href'] for a in soup.find_all('a', href=True) if '_rrc180_' in a['href']] # Just want Final Production files
-    return links
+    source_links = [a['href'] for a in soup.find_all('a', href=True) if '_rrc180_' in a['href']] # Just want Final Production files
   except requests.exceptions.RequestException as e:
     print(f"Error: {e}")
-    return []
+
+  # Create list of data source urls  
+  data_source_urls = []
+  for link in source_links:
+    if link[0:6] == '/media': link = 'https://www.rrc.texas.gov'+link
+    data_source_urls.append(link)
+
+  # If requested, save list of data source urls to CSV (Default to save)
+  if save_data:
+    with open(urls_path, 'w', newline='') as file:
+      writer = csv.writer(file)
+      for link in data_source_urls:
+        writer.writerow([link])
+
+  return data_source_urls
 
 
 def _download_pdf(url, save_path):
@@ -38,52 +52,37 @@ def _download_pdf(url, save_path):
     file.write(response.content)
 
 
-def _dict_to_csv(dict_data, csv_path):
-    with open(csv_path, 'w', newline='') as file:
-        writer = csv.DictWriter(file, dict_data[0].keys())
-        writer.writeheader()
-        writer.writerows(dict_data)
-
-
-def get_data():
-  data_source_urls_path = 'data_source_urls.csv'
-  csvs_dir = 'Parsed_data'
+def get_data(save_data=True):
+  # Return DataFrame if CSV already saved locally
   dataset_path = 'data.csv'
+  if os.path.isfile(dataset_path):
+    return pd.read_csv(dataset_path)
 
-  # Get list of data source urls from RRC Website, if not acquired already
-  if not os.path.isfile(data_source_urls_path):
-    source_url = 'https://www.rrc.texas.gov/oil-and-gas/research-and-statistics/production-data/monthly-crude-oil-production-by-district-and-field/'
-    data_source_urls = _get_data_source_urls(source_url)
-    # Save list of data source urls to CSV
-    with open(data_source_urls_path, 'w', newline='') as file:
-      writer = csv.writer(file)
-      for item in data_source_urls:
-        if item[0:6] == '/media': item = 'https://www.rrc.texas.gov'+item
-        writer.writerow([item])
-
-  # Read through the list of data source urls and parse the data, if not already parsed
-  with open(data_source_urls_path, 'r', newline='') as file:
-    urls = csv.reader(file)
-    for url in urls:
-      pdf_url = url[0]
-      csv_save_path = os.path.join(csvs_dir,f"{url[0][-27:-4]}.csv")
-      if not os.path.isfile(csv_save_path):
-        print(f'working on {url[0]}')
-        _download_pdf(url[0], 'data.pdf')
-        # Parse using pdfPlumber and write to csv
-        parsed_table = parse_pdf_for_table('data.pdf')
-        _dict_to_csv(parsed_table, csv_save_path)
-
-  # Combine data
-  if not os.path.isfile(dataset_path):
-    dfs = []
-    # Iterate through each CSV file in the data folder
-    for file_name in os.listdir(csvs_dir):
-      file_path = os.path.join(csvs_dir, file_name)
-      df = pd.read_csv(file_path) # Read the CSV file into a DataFrame
-      dfs.append(df) # Append the DataFrame to the dfs list
-
-    combined_df = pd.concat(dfs, ignore_index=True)
-    combined_df.to_csv(dataset_path, index=False)
+  # Get list of data source urls from RRC Website, if not already saved locally
+  data_source_urls_path = 'data_source_urls.csv'
+  try:
+    with open(data_source_urls_path, 'r', newline='') as file:
+      urls = [url[0] for url in csv.reader(file)]
+  except OSError:
+    urls = _get_data_source_urls(data_source_urls_path, save_data=save_data)
   
-  return pd.read_csv(dataset_path)
+  # Read through the list of data source urls and parse the data into the list of DataFrames
+  dfs = [] # Initialize a list for collecting each DataFrame
+  csvs_dir = 'Parsed_data'
+  for url in urls:
+    # Download and parse the data, if not already saved locally
+    csv_save_path = os.path.join(csvs_dir,f"{url[-27:-4]}.csv")
+    try:
+      df = pd.read_csv(csv_save_path)
+    except OSError:
+      _download_pdf(url, 'data.pdf')
+      parsed_table = parse_pdf_for_table('data.pdf')
+      df = pd.DataFrame.from_records(parsed_table)
+      if save_data: df.to_csv(csv_save_path)
+    dfs.append(df) # Append the DataFrame to the dfs list
+  
+  # Combine data
+  combined_df = pd.concat(dfs, ignore_index=True)
+  if save_data: combined_df.to_csv(dataset_path, index=False)
+  
+  return combined_df
