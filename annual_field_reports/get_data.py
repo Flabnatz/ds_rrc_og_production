@@ -22,6 +22,13 @@ def _download_source_files():
   webbrowser.open(url)
 
 
+def df_cols_to_nums(df, cols):
+  for key in cols:
+    df[key] = pd.to_numeric(df[key].str.replace(',', ''), errors='coerce')
+  
+  return df
+
+
 def _process_gas_data(data):
   # Columns defined in Manual PDF
   # https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/#oil-and-gas-field-data
@@ -65,6 +72,15 @@ def _process_gas_data(data):
   df["CYCLING FIELD"] = np.where(df["CYCLING FIELD"] == "C", True, False)
   df["FULL WELL STREAM TO A PLANT"] = np.where(df["FULL WELL STREAM TO A PLANT"] == "F", True, False)
 
+  df = df_cols_to_nums(df, [
+    "DEPTH",
+    "TOTAL WELLS",
+    "PRODUCING WELLS",
+    "TOTAL GAS PRODUCED",
+    "TOTAL CONDENSATE PRODUCED",
+    "CUMULATIVE GAS PRODUCED",
+  ])
+
   return df
 
 
@@ -100,7 +116,16 @@ def _process_oil_data(data):
 
   df = pd.DataFrame(data, columns=cols)
   df["MULTIPLE COUNTY FLAG"] = np.where(df["MULTIPLE COUNTY FLAG"] == "M", True, False)
-
+  df = df_cols_to_nums(df, [
+    "DEPTH",
+    "OIL GRAVITY",
+    "TOTAL WELLS",
+    "PRODUCING WELLS",
+    "TOTAL CASINGHEAD GAS PRODUCTION",
+    "TOTAL OIL PRODUCTION",
+    "CUMULATIVE OIL PRODUCTION"
+  ])
+  
   return df
 
 
@@ -111,7 +136,7 @@ def get_data(type='gas', save_data=True):
     return pd.read_csv(dataset_path)
   
   dfs = []
-  for filename in os.listdir(type):
+  for filename in os.listdir(type+"_data"):
     filepath = os.path.join(type+"_data",filename)
     with open(filepath, "r") as file:
       data = [line.strip().split("}") for line in file.readlines()]
