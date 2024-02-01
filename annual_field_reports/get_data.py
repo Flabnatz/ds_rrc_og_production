@@ -43,8 +43,8 @@ def _process_gas_data(data):
     "DEPTH",
     "TOTAL WELLS",
     "PRODUCING WELLS",
-    "TOTAL GAS PRODUCED",
-    "CYCLING FIELD", #does this need to switch with  Total Gas Produced???
+    "CYCLING FIELD", # Swapped with TOTAL GAS PRODUCED position as listed in Manual PDF
+    "TOTAL GAS PRODUCED", # Swapped with CYCLING FIELD position as listed in Manual PDF
     "TOTAL CONDENSATE PRODUCED",
     "FULL WELL STREAM TO A PLANT",
     "CUMULATIVE GAS PRODUCED",
