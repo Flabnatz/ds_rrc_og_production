@@ -15,5 +15,5 @@ if __name__ == '__main__':
   correlation = combined_df[item_a].corr(combined_df[item_b])
   print(f"Correlation between columns {item_a} and {item_b}: {correlation}")
 
-  fig = px.scatter(combined_df, x=item_a, y=item_b)
+  fig = px.scatter(combined_df, x=item_a, y=item_b, log_x=True, log_y=True)
   fig.show()
